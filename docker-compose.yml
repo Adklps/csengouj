@@ -1,0 +1,58 @@
+version: "3.9"
+# DONT FORGET TO BUILD THE IMAGES FIRST! AND MAKE SURE THEIR ALIASES ARE SET (hldup/csengoserver)
+# Todo add values from .env file via ${}
+services:
+  server:
+    image: hldup/csengoserver
+    restart: always
+    volumes:
+      - ./sounds:/usr/csengo/sounds
+    environment:
+      PORT: ${SERVER_PORT}
+      HCAPTCHA_SECRET: ${HCAPTCHA_SECRET}
+      TOKEN_SECRET: ${TOKEN_SECRET}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASS: ${DB_PASS}
+      DB_HOST: csengopostgres
+      SESSION_STORE_PASSWORD: ${SESSION_STORE_PASSWORD}
+      SESSION_STORE_HOST: csengosessionstore
+      SESSION_STORE_PORT: 6379
+      DEV: ${DEV}
+    links:
+      - database
+    depends_on:
+      - database
+      - sessionstore
+    networks:
+      - csengo
+
+  client:
+    image: hldup/csengoclient
+    networks:
+      - csengo
+
+  sessionstore:
+    image: redis:latest
+    restart: always
+    hostname: csengosessionstore
+    command: redis-server --save 20 1 --loglevel warning --requirepass ${SESSION_STORE_PASSWORD}
+    networks:
+      - csengo
+
+  database:
+    image: "postgres:latest"
+    hostname: csengopostgres
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - ./database:/var/lib/postgresql/data 
+    networks:
+      - csengo
+
+
+networks:
+  csengo:
+    driver: bridge
